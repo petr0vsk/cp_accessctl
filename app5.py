@@ -67,7 +67,7 @@ class CheckPointClient:
                 self.sid = None
 
     @staticmethod
-    def print_user_time_info(user_data):
+    def print_user_time_info(user_data): # метод api show user
         """Выводит данные о времени доступа из свойств объекта User."""
         user_name = user_data.get("name", "Unknown")
         connect_daily = user_data.get("connect-daily")
@@ -86,8 +86,14 @@ class CheckPointClient:
             print("Дни: Не заданы (по умолчанию Any)")
         print(f"{'=' * 60}")
 
-    def get_time_objects_from_role(self, role_name):
-        """Находит имена объектов Time, привязанных к правилам с этой ролью."""
+    def get_time_objects_from_role(self, role_name): # методы api: where-used, show-access-rule
+        """Находит имена объектов Time, привязанных к правилам с этой ролью.
+        1. Спрашиваем у API: "В каких правилах используется user_ar_ra-filkina?" (Используем where-used).
+        2. Получаем в ответ, например: "В правиле с UID 12345".
+        3. Спрашиваем у API: "Покажи мне все настройки правила с UID 12345" (Используем show-access-rule).
+        4. Смотрим в ответ: "Ага, в колонке Time этого правила стоит объект с именем Filkina".
+        5. Возвращаем имя Filkina в основную программу, чтобы затем запросить его расписание через show-time.     
+        """
         print(f"\n[*] Поиск связанных объектов Time для роли: {role_name}...")
         time_names = set()
 
@@ -98,6 +104,7 @@ class CheckPointClient:
             rules = used_directly.get("access-control-rules", [])
 
             for rule_entry in rules:
+                # извлекаем уникальные uid правила и слоя политики (Layers)
                 rule_uid = rule_entry.get("rule", {}).get("uid")
                 layer_uid = rule_entry.get("layer", {}).get("uid")
 
@@ -121,7 +128,7 @@ class CheckPointClient:
             print(f"[-] Ошибка при поиске объектов Time: {e}")
             return []
 
-    def print_time_object_info(self, time_name):
+    def print_time_object_info(self, time_name): # метод api: show-time
         """Выгружает и расшифровывает настройки конкретного объекта Time."""
         try:
             data = self.call("show-time", {"name": time_name})
@@ -129,11 +136,11 @@ class CheckPointClient:
             print(f"\n{'>' * 5} Объект TIME: {time_name} {'<' * 5}")
 
             # 1. Период действия объекта
-            start_date = data.get("start", {}).get("iso-8601", "С текущего момента")
+            start_date = data.get("start", {}).get("date", "С текущего момента")
             if data.get("end-never"):
                 end_date = "Бессрочно"
             else:
-                end_date = data.get("end", {}).get("iso-8601", "Не задано")
+                end_date = data.get("end", {}).get("date", "Не задано")
 
             print(f"Срок действия: {start_date} ---> {end_date}")
 
@@ -178,7 +185,7 @@ def main():
         target_role = "user_ar_ra-filkina"
         print(f"[*] Анализ доступа для роли: {target_role}")
 
-        # --- ЧАСТЬ 1: ПРОВЕРКА ПОЛЬЗОВАТЕЛЕЙ (как в app4) ---
+        # --- ЧАСТЬ 1: ПРОВЕРКА ПОЛЬЗОВАТЕЛЕЙ  ---
         role_data = client.call("show-access-role", {"name": target_role})
         for obj in role_data.get("users", []):
             # Если это группа, смотрим ее состав
