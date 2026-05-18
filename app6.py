@@ -80,13 +80,14 @@ class CheckPointClient:
 
         try:
             while True:
-                # Отправляем запрос с фильтром по тексту и пагинацией
+                # ИСПОЛЬЗУЕМ УНИВЕРСАЛЬНЫЙ МЕТОД show-objects
                 response = self.call(
-                    "show-access-roles",
+                    "show-objects",
                     {
+                        "type": "access-role",  # Фильтр по типу объекта
+                        "filter": search_pattern, # Поиск по тексту (названию)
                         "limit": limit,
                         "offset": offset,
-                        "text": search_pattern,
                         "details-level": "standard",
                     },
                 )
